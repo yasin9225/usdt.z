@@ -1,0 +1,857 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>BNB Chain Trading | Active Position</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Inter', 'Segoe UI', system-ui, -apple-system, sans-serif;
+        }
+        
+        body {
+            background-color: #0a0a0a;
+            color: #f5f5f5;
+            min-height: 100vh;
+            padding: 20px;
+            overflow-x: hidden;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+        
+        .status-indicator {
+            background-color: #111;
+            border-radius: 10px;
+            padding: 15px 20px;
+            margin-bottom: 25px;
+            border: 1px solid #222;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .status-active {
+            color: #00ff88;
+        }
+        
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #00ff88;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.3; }
+            100% { opacity: 1; }
+        }
+        
+        .countdown-timer {
+            font-size: 1.2rem;
+            font-weight: 600;
+            color: #F0B90B;
+        }
+        
+        .main-dashboard {
+            display: grid;
+            grid-template-columns: 1fr 400px;
+            gap: 25px;
+            margin-bottom: 30px;
+        }
+        
+        .trading-card {
+            background-color: #111;
+            border-radius: 16px;
+            padding: 25px;
+            border: 1px solid #222;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        }
+        
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+        }
+        
+        .card-header h2 {
+            font-size: 1.4rem;
+            font-weight: 600;
+        }
+        
+        .live-indicator {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            color: #00ff88;
+        }
+        
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background-color: #00ff88;
+            border-radius: 50%;
+            animation: pulse 1.5s infinite;
+        }
+        
+        .trading-pair {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 20px;
+            margin-bottom: 30px;
+            flex-wrap: wrap;
+        }
+        
+        .coin {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 20px;
+            background-color: #0a0a0a;
+            border-radius: 12px;
+            flex: 1;
+            min-width: 200px;
+            border: 1px solid #222;
+        }
+        
+        .coin-icon {
+            width: 50px;
+            height: 50px;
+            background: linear-gradient(135deg, #F0B90B 0%, #FFD700 100%);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.5rem;
+        }
+        
+        .coin-icon.second {
+            background: linear-gradient(135deg, #00ff88 0%, #00cc66 100%);
+        }
+        
+        .exchange-icon {
+            font-size: 2rem;
+            color: #F0B90B;
+        }
+        
+        .coin-info h3 {
+            font-size: 1.3rem;
+            margin-bottom: 5px;
+        }
+        
+        .coin-info p {
+            color: #888;
+            font-size: 0.9rem;
+        }
+        
+        .balance-display {
+            background-color: #0a0a0a;
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 25px;
+            border: 1px solid #222;
+            text-align: center;
+        }
+        
+        .balance-display h3 {
+            color: #888;
+            font-size: 1rem;
+            margin-bottom: 10px;
+        }
+        
+        .balance-display .amount {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #F0B90B;
+        }
+        
+        .trades-container {
+            background-color: #0a0a0a;
+            border-radius: 12px;
+            padding: 0;
+            border: 1px solid #222;
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        
+        .trades-header {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+            padding: 15px 20px;
+            background-color: #111;
+            border-bottom: 1px solid #222;
+            font-weight: 600;
+            color: #aaa;
+            font-size: 0.9rem;
+        }
+        
+        .trade-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr 1fr 1fr;
+            padding: 12px 20px;
+            border-bottom: 1px solid #222;
+            font-size: 0.95rem;
+            align-items: center;
+        }
+        
+        .trade-row:nth-child(even) {
+            background-color: rgba(255, 255, 255, 0.02);
+        }
+        
+        .trade-type {
+            display: inline-block;
+            padding: 5px 12px;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 600;
+        }
+        
+        .trade-type.buy {
+            background-color: rgba(0, 255, 136, 0.1);
+            color: #00ff88;
+        }
+        
+        .trade-type.sell {
+            background-color: rgba(255, 71, 87, 0.1);
+            color: #ff4757;
+        }
+        
+        .trade-amount {
+            font-weight: 600;
+        }
+        
+        .trade-time {
+            color: #888;
+            font-size: 0.85rem;
+        }
+        
+        .right-sidebar {
+            display: flex;
+            flex-direction: column;
+            gap: 25px;
+        }
+        
+        .contract-card {
+            background-color: #111;
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid #222;
+        }
+        
+        .contract-card h3 {
+            font-size: 1.1rem;
+            margin-bottom: 15px;
+            color: #ddd;
+        }
+        
+        .contract-address-box {
+            background-color: #0a0a0a;
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid #222;
+            margin-bottom: 15px;
+        }
+        
+        .contract-input {
+            width: 100%;
+            padding: 12px;
+            background: transparent;
+            border: none;
+            color: #F0B90B;
+            font-family: monospace;
+            font-size: 0.9rem;
+            text-align: center;
+        }
+        
+        .contract-input:focus {
+            outline: none;
+        }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 15px;
+        }
+        
+        .stat-box {
+            background-color: #0a0a0a;
+            border-radius: 8px;
+            padding: 15px;
+            border: 1px solid #222;
+        }
+        
+        .stat-box h4 {
+            color: #888;
+            font-size: 0.8rem;
+            margin-bottom: 8px;
+        }
+        
+        .stat-box p {
+            font-size: 1.1rem;
+            font-weight: 600;
+        }
+        
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            margin-top: 20px;
+        }
+        
+        .btn {
+            padding: 15px;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+        }
+        
+        .btn-disabled {
+            background-color: #333;
+            color: #666;
+            cursor: not-allowed;
+        }
+        
+        .btn-disabled:hover {
+            background-color: #333;
+            transform: none;
+        }
+        
+        .btn-secondary {
+            background-color: #222;
+            color: #f5f5f5;
+            border: 1px solid #333;
+        }
+        
+        .btn-secondary:hover {
+            background-color: #333;
+            transform: translateY(-2px);
+        }
+        
+        .volume-info {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 20px;
+            padding: 15px;
+            background-color: #0a0a0a;
+            border-radius: 10px;
+            border: 1px solid #222;
+        }
+        
+        .volume-item {
+            text-align: center;
+        }
+        
+        .volume-item h4 {
+            color: #888;
+            font-size: 0.9rem;
+            margin-bottom: 5px;
+        }
+        
+        .volume-item p {
+            font-size: 1.2rem;
+            font-weight: 600;
+        }
+        
+        .green {
+            color: #00ff88;
+        }
+        
+        .red {
+            color: #ff4757;
+        }
+        
+        /* Scrollbar styling */
+        .trades-container::-webkit-scrollbar {
+            width: 6px;
+        }
+        
+        .trades-container::-webkit-scrollbar-track {
+            background: #111;
+        }
+        
+        .trades-container::-webkit-scrollbar-thumb {
+            background: #333;
+            border-radius: 3px;
+        }
+        
+        .time-progress {
+            margin: 20px 0;
+        }
+        
+        .progress-header {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 10px;
+        }
+        
+        .progress-bar {
+            height: 6px;
+            background-color: #222;
+            border-radius: 3px;
+            overflow: hidden;
+        }
+        
+        .progress-fill {
+            height: 100%;
+            background: linear-gradient(to right, #F0B90B, #FFD700);
+            width: 0%;
+            border-radius: 3px;
+            transition: width 0.5s ease;
+        }
+        
+        .warning-box {
+            background-color: rgba(255, 71, 87, 0.1);
+            border: 1px solid #ff4757;
+            border-radius: 10px;
+            padding: 15px;
+            margin-top: 20px;
+            text-align: center;
+        }
+        
+        .warning-box i {
+            color: #ff4757;
+            margin-bottom: 10px;
+            font-size: 1.5rem;
+        }
+        
+        @media (max-width: 1200px) {
+            .main-dashboard {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 768px) {
+            .trading-pair {
+                flex-direction: column;
+                gap: 20px;
+            }
+            
+            .exchange-icon {
+                transform: rotate(90deg);
+            }
+            
+            .trades-header, .trade-row {
+                grid-template-columns: 1fr 1fr 1fr;
+            }
+            
+            .trades-header .hide-mobile, .trade-row .hide-mobile {
+                display: none;
+            }
+            
+            .controls {
+                grid-template-columns: 1fr;
+            }
+        }
+        
+        @media (max-width: 480px) {
+            .balance-display .amount {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="status-indicator">
+            <div class="status-badge status-active">
+                <div class="status-dot"></div>
+                <span>TRADING BOT: ACTIVE</span>
+            </div>
+            <div class="countdown-timer" id="countdownTimer">
+                Lock Period: <span id="lockTimeDisplay">4d 22h remaining</span>
+            </div>
+        </div>
+        
+        <div class="main-dashboard">
+            <div class="trading-card">
+                <div class="card-header">
+                    <h2>USDT.Z / USDT TRADING</h2>
+                    <div class="live-indicator">
+                        <div class="live-dot"></div>
+                        <span>LIVE TRADING</span>
+                    </div>
+                </div>
+                
+                <div class="trading-pair">
+                    <div class="coin">
+                        <div class="coin-icon">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                        <div class="coin-info">
+                            <h3>USDT.Z</h3>
+                            <p>BNB Chain (BEP-20)</p>
+                        </div>
+                    </div>
+                    
+                    <div class="exchange-icon">
+                        <i class="fas fa-arrow-right-arrow-left"></i>
+                    </div>
+                    
+                    <div class="coin">
+                        <div class="coin-icon second">
+                            <i class="fas fa-coins"></i>
+                        </div>
+                        <div class="coin-info">
+                            <h3>USDT</h3>
+                            <p>BNB Chain (BEP-20)</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="balance-display">
+                    <h3>TOTAL BALANCE</h3>
+                    <div class="amount" id="totalBalance">4,000,428.75</div>
+                    <div class="subtext" style="color: #666; margin-top: 5px; font-size: 0.9rem;">USDT.Z</div>
+                </div>
+                
+                <div class="volume-info">
+                    <div class="volume-item">
+                        <h4>24H TRADES</h4>
+                        <p id="dailyTrades">8,642</p>
+                    </div>
+                    <div class="volume-item">
+                        <h4>AVG TRADE SIZE</h4>
+                        <p id="avgTradeSize">0.124</p>
+                    </div>
+                    <div class="volume-item">
+                        <h4>BUY/SELL RATIO</h4>
+                        <p id="buySellRatio">52/48</p>
+                    </div>
+                </div>
+                
+                <div class="time-progress">
+                    <div class="progress-header">
+                        <span>Time Elapsed: <span id="elapsedTime">1h 2m</span></span>
+                        <span>Lock Period: <span id="remainingTime">4d 22h</span></span>
+                    </div>
+                    <div class="progress-bar">
+                        <div class="progress-fill" id="timeProgress"></div>
+                    </div>
+                </div>
+                
+                <h3 style="margin: 20px 0 15px 0;">LIVE TRADES <small>(Buy/Sell every second)</small></h3>
+                <div class="trades-container">
+                    <div class="trades-header">
+                        <div>TIME</div>
+                        <div>TYPE</div>
+                        <div>AMOUNT (USDT.Z)</div>
+                        <div class="hide-mobile">PRICE</div>
+                        <div class="hide-mobile">VALUE (USDT)</div>
+                    </div>
+                    <div id="tradesList">
+                        <!-- Trades will be inserted here by JavaScript -->
+                    </div>
+                </div>
+            </div>
+            
+            <div class="right-sidebar">
+                <div class="contract-card">
+                    <h3>SMART CONTRACT ADDRESS</h3>
+                    <div class="contract-address-box">
+                        <input type="text" class="contract-input" id="contractAddressInput" 
+                               value="0x4be35ec329343d7d9f548d42b0f8c17fffe07db4" readonly>
+                    </div>
+                    
+                    <div class="controls">
+                        <button class="btn btn-secondary btn-small" onclick="copyContractAddress()">
+                            <i class="far fa-copy"></i> Copy Address
+                        </button>
+                        <button class="btn btn-secondary btn-small" onclick="viewOnBscScan()">
+                            <i class="fas fa-external-link-alt"></i> BscScan
+                        </button>
+                    </div>
+                    
+                    <div class="stats-grid">
+                        <div class="stat-box">
+                            <h4>CONTRACT BALANCE</h4>
+                            <p id="contractBalance">4.00M</p>
+                        </div>
+                        <div class="stat-box">
+                            <h4>HOLDERS</h4>
+                            <p id="holders">1,842</p>
+                        </div>
+                        <div class="stat-box">
+                            <h4>DAILY VOLUME</h4>
+                            <p id="dailyVolume">$1.24M</p>
+                        </div>
+                        <div class="stat-box">
+                            <h4>LIQUIDITY</h4>
+                            <p id="liquidity">$8.4M</p>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="trading-card">
+                    <h3 style="margin-bottom: 20px;">TRADING CONTROLS</h3>
+                    
+                    <div style="margin-bottom: 20px; padding: 15px; background-color: #0a0a0a; border-radius: 8px; border: 1px solid #222;">
+                        <h4 style="color: #888; margin-bottom: 10px;">TRADING FREQUENCY</h4>
+                        <p>1 trade per second</p>
+                        <p style="color: #888; font-size: 0.9rem; margin-top: 5px;">Small decimal amounts (0.01 - 0.5 USDT.Z)</p>
+                    </div>
+                    
+                    <div class="controls">
+                        <button class="btn btn-disabled" disabled>
+                            <i class="fas fa-ban"></i> AUTO-TRADING ACTIVE
+                        </button>
+                        
+                        <button class="btn btn-disabled" onclick="showWithdrawWarning()">
+                            <i class="fas fa-wallet"></i> WITHDRAW (LOCKED)
+                        </button>
+                    </div>
+                    
+                    <div class="warning-box">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <p><strong>WITHDRAWAL LOCKED</strong></p>
+                        <p style="color: #aaa; font-size: 0.9rem; margin-top: 5px;">Funds are locked for 5 days. No withdrawals allowed during this period.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <footer>
+            <!-- Removed the text as requested -->
+        </footer>
+    </div>
+
+    <script>
+        // Initial data
+        const contractAddress = "0x4be35ec329343d7d9f548d42b0f8c17fffe07db4";
+        let totalBalance = 4000428.75; // 4 million with fractions
+        
+        // Set start time to now (1 hour and 2 minutes ago to match the display)
+        let startTime = new Date();
+        startTime.setHours(startTime.getHours() - 1);
+        startTime.setMinutes(startTime.getMinutes() - 2);
+        
+        let lockPeriodDays = 5;
+        let totalTrades = 0;
+        let buyCount = 0;
+        let sellCount = 0;
+        let tradesHistory = [];
+        let dailyTrades = 8642;
+        
+        // Auto-increment variables
+        let autoIncrementInterval;
+        let incrementAmount = 4; // 4 tokens every 2 minutes
+        let incrementInterval = 120000; // 2 minutes in milliseconds
+        
+        // Update display
+        function updateDisplay() {
+            // Update total balance
+            document.getElementById('totalBalance').textContent = 
+                totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+            
+            // Update trade stats
+            document.getElementById('dailyTrades').textContent = dailyTrades.toLocaleString();
+            
+            const avgTradeSize = tradesHistory.length > 0 
+                ? (tradesHistory.reduce((sum, trade) => sum + trade.amount, 0) / tradesHistory.length).toFixed(3)
+                : "0.124";
+            document.getElementById('avgTradeSize').textContent = avgTradeSize;
+            
+            const buyRatio = Math.round((buyCount/(buyCount+sellCount))*100) || 52;
+            const sellRatio = Math.round((sellCount/(buyCount+sellCount))*100) || 48;
+            document.getElementById('buySellRatio').textContent = `${buyRatio}/${sellRatio}`;
+            
+            // Update time progress
+            updateTimeProgress();
+        }
+        
+        // Update time progress
+        function updateTimeProgress() {
+            const now = new Date();
+            const elapsedMs = now - startTime;
+            const totalLockMs = lockPeriodDays * 24 * 60 * 60 * 1000;
+            
+            // Calculate progress
+            const progressPercent = Math.min((elapsedMs / totalLockMs) * 100, 100);
+            document.getElementById('timeProgress').style.width = progressPercent + '%';
+            
+            // Calculate elapsed and remaining time
+            const elapsedDays = Math.floor(elapsedMs / (1000 * 60 * 60 * 24));
+            const elapsedHours = Math.floor((elapsedMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const elapsedMinutes = Math.floor((elapsedMs % (1000 * 60 * 60)) / (1000 * 60));
+            
+            const remainingMs = Math.max(0, totalLockMs - elapsedMs);
+            const remainingDays = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
+            const remainingHours = Math.floor((remainingMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const remainingMinutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+            
+            // Update time displays
+            document.getElementById('elapsedTime').textContent = 
+                `${elapsedHours}h ${elapsedMinutes}m`;
+            document.getElementById('remainingTime').textContent = 
+                `${remainingDays}d ${remainingHours}h`;
+            
+            // Update countdown timer
+            document.getElementById('lockTimeDisplay').textContent = 
+                `${remainingDays}d ${remainingHours}h remaining`;
+        }
+        
+        // Auto-increment balance by 4 every 2 minutes
+        function startAutoIncrement() {
+            autoIncrementInterval = setInterval(() => {
+                totalBalance += 4;
+                updateDisplay();
+                
+                // Show notification for the increment
+                console.log(`Balance increased by 4 USDT.Z. New balance: ${totalBalance}`);
+            }, incrementInterval);
+        }
+        
+        // Generate a random trade (decimal amounts)
+        function generateRandomTrade() {
+            const isBuy = Math.random() > 0.48; // Slightly biased toward buying (52/48)
+            const amount = parseFloat((Math.random() * 0.49 + 0.01).toFixed(3)); // Random amount between 0.01 and 0.5
+            const price = 0.95 + (Math.random() * 0.1); // Random price between 0.95 and 1.05
+            const usdtValue = parseFloat((amount * price).toFixed(2));
+            
+            const now = new Date();
+            const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
+            
+            const trade = {
+                id: Date.now(),
+                time: timeString,
+                type: isBuy ? 'buy' : 'sell',
+                amount: amount,
+                price: price.toFixed(4),
+                usdtValue: usdtValue
+            };
+            
+            tradesHistory.unshift(trade);
+            
+            // Update counts
+            totalTrades++;
+            if (isBuy) {
+                buyCount++;
+                // Buying adds to balance
+                totalBalance += amount;
+            } else {
+                sellCount++;
+                // Selling subtracts from balance
+                totalBalance -= amount;
+            }
+            
+            // Update daily trades count (random increment)
+            if (Math.random() > 0.7) {
+                dailyTrades += Math.floor(Math.random() * 3) + 1;
+            }
+            
+            // Update the trades list
+            updateTradesList();
+            
+            // Update the display
+            updateDisplay();
+        }
+        
+        // Update trades list in UI
+        function updateTradesList() {
+            const tradesList = document.getElementById('tradesList');
+            
+            // Clear and update with latest trades (max 20)
+            const displayTrades = tradesHistory.slice(0, 20);
+            
+            tradesList.innerHTML = '';
+            
+            displayTrades.forEach(trade => {
+                const row = document.createElement('div');
+                row.className = 'trade-row';
+                
+                row.innerHTML = `
+                    <div class="trade-time">${trade.time}</div>
+                    <div><span class="trade-type ${trade.type}">${trade.type.toUpperCase()}</span></div>
+                    <div class="trade-amount">${trade.amount.toFixed(3)}</div>
+                    <div class="hide-mobile">${trade.price}</div>
+                    <div class="hide-mobile">${trade.usdtValue.toFixed(2)}</div>
+                `;
+                
+                tradesList.appendChild(row);
+            });
+        }
+        
+        // Copy contract address
+        function copyContractAddress() {
+            navigator.clipboard.writeText(contractAddress).then(() => {
+                alert('Contract address copied to clipboard!');
+            });
+        }
+        
+        // View on BscScan
+        function viewOnBscScan() {
+            window.open(`https://bscscan.com/address/${contractAddress}`, '_blank');
+        }
+        
+        // Show withdrawal warning
+        function showWithdrawWarning() {
+            alert('⚠️ WITHDRAWAL LOCKED\n\nFunds are locked for 5 days. No withdrawals allowed during this period.\n\nLock period ends in: ' + 
+                  document.getElementById('remainingTime').textContent);
+        }
+        
+        // Initialize with some trades
+        function initializeTrades() {
+            for (let i = 0; i < 15; i++) {
+                // Generate trades with timestamps in the past
+                setTimeout(() => {
+                    generateRandomTrade();
+                }, i * 100);
+            }
+        }
+        
+        // Start live trading simulation
+        function startLiveTrading() {
+            // Generate a trade every second
+            setInterval(generateRandomTrade, 1000);
+            
+            // Update stats randomly
+            setInterval(() => {
+                // Update daily volume
+                const volume = (1.2 + Math.random() * 0.3).toFixed(2);
+                document.getElementById('dailyVolume').textContent = `$${volume}M`;
+                
+                // Update liquidity
+                const liquidity = (8.3 + Math.random() * 0.3).toFixed(1);
+                document.getElementById('liquidity').textContent = `$${liquidity}M`;
+            }, 5000);
+        }
+        
+        // Initialize on page load
+        window.onload = function() {
+            updateDisplay();
+            initializeTrades();
+            startLiveTrading();
+            startAutoIncrement(); // Start the auto-increment
+            
+            // Update time progress every minute
+            setInterval(updateTimeProgress, 60000);
+            
+            // Pre-fill contract address in the input field
+            document.getElementById('contractAddressInput').value = contractAddress;
+        };
+    </script>
+</body>
+</html>
