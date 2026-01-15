@@ -4,6 +4,10 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>BNB Chain Trading | Active Position</title>
+    <!-- منع الكاش بالكامل -->
+    <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
+    <meta http-equiv="Pragma" content="no-cache">
+    <meta http-equiv="Expires" content="0">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
         * {
@@ -564,11 +568,11 @@
                 <div class="volume-info">
                     <div class="volume-item">
                         <h4>24H TRADES</h4>
-                        <p id="dailyTrades">8,642</p>
+                        <p id="dailyTrades">10,569</p>
                     </div>
                     <div class="volume-item">
                         <h4>AVG TRADE SIZE</h4>
-                        <p id="avgTradeSize">0.124</p>
+                        <p id="avgTradeSize">0.238</p>
                     </div>
                     <div class="volume-item">
                         <h4>BUY/SELL RATIO</h4>
@@ -629,11 +633,11 @@
                         </div>
                         <div class="stat-box">
                             <h4>DAILY VOLUME</h4>
-                            <p id="dailyVolume">$1.24M</p>
+                            <p id="dailyVolume">$1.31M</p>
                         </div>
                         <div class="stat-box">
                             <h4>LIQUIDITY</h4>
-                            <p id="liquidity">$8.4M</p>
+                            <p id="liquidity">$8.3M</p>
                         </div>
                     </div>
                 </div>
@@ -673,95 +677,185 @@
     </div>
 
     <script>
-        // Contract address
+        // إصدار التطبيق - تغيير هذا الرقم عند أي تحديث مهم
+        const APP_VERSION = "4.0";
         const contractAddress = "0x4be35ec329343d7d9f548d42b0f8c17fffe07db4";
         
         // State object with default values
         let state = {
-            totalBalance: 7112175.00, // الرصيد الجديد 7,112,175.00
+            totalBalance: 7112175.00,
             startTime: null,
             lastSaveTime: null,
             lastIncrementTime: null,
             totalTrades: 0,
             buyCount: 0,
             sellCount: 0,
-            dailyTrades: 8642,
+            dailyTrades: 10569,
             tradesHistory: [],
-            lockPeriodHours: 24 // تغيير إلى 24 ساعة فقط
+            lockPeriodHours: 24,
+            lockEnded: false,
+            appVersion: APP_VERSION
         };
         
         // Constants
-        const INCREMENT_AMOUNT = 4; // 4 tokens every 2 minutes - نفس الكود الأصلي
-        const INCREMENT_INTERVAL = 120000; // 2 minutes in milliseconds
-        const LOCK_PERIOD_MS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
+        const INCREMENT_AMOUNT = 4;
+        const INCREMENT_INTERVAL = 120000;
+        const LOCK_PERIOD_MS = 24 * 60 * 60 * 1000;
         
-        // Save state to localStorage
+        // دالة لمسح جميع البيانات القديمة
+        function clearAllOldData() {
+            try {
+                // مسح localStorage
+                localStorage.clear();
+                
+                // مسح sessionStorage
+                sessionStorage.clear();
+                
+                // مسح الكاش إذا كان المدعوم
+                if ('caches' in window) {
+                    caches.keys().then(function(cacheNames) {
+                        cacheNames.forEach(function(cacheName) {
+                            caches.delete(cacheName);
+                        });
+                    });
+                }
+                
+                // مسح cookies
+                document.cookie.split(";").forEach(function(c) {
+                    document.cookie = c.replace(/^ +/, "").replace(/=.*/, "=;expires=" + new Date().toUTCString() + ";path=/");
+                });
+                
+                // مسح IndexedDB
+                if (window.indexedDB) {
+                    indexedDB.databases().then(function(databases) {
+                        databases.forEach(function(db) {
+                            indexedDB.deleteDatabase(db.name);
+                        });
+                    });
+                }
+                
+                console.log('All old data cleared successfully');
+            } catch (error) {
+                console.error('Error clearing data:', error);
+            }
+        }
+        
+        // التحقق من الإصدار والبيانات القديمة
+        function checkAndClearOldData() {
+            try {
+                // التحقق من الإصدار في localStorage
+                const savedVersion = localStorage.getItem('appVersion');
+                if (savedVersion !== APP_VERSION) {
+                    console.log(`Old version detected (${savedVersion} vs ${APP_VERSION}), clearing all data`);
+                    clearAllOldData();
+                    localStorage.setItem('appVersion', APP_VERSION);
+                    return true;
+                }
+                
+                // التحقق من الإصدار في sessionStorage
+                const sessionVersion = sessionStorage.getItem('appVersion');
+                if (sessionVersion !== APP_VERSION) {
+                    sessionStorage.clear();
+                    sessionStorage.setItem('appVersion', APP_VERSION);
+                    return true;
+                }
+                
+                return false;
+            } catch (error) {
+                console.error('Error checking version:', error);
+                clearAllOldData();
+                return true;
+            }
+        }
+        
+        // Save state to sessionStorage
         function saveState() {
             try {
                 state.lastSaveTime = Date.now();
-                localStorage.setItem('bnbTradingState', JSON.stringify(state));
+                state.appVersion = APP_VERSION;
+                
+                // حفظ في sessionStorage (تزول عند إغلاق التبويب)
+                sessionStorage.setItem('tradingState_v' + APP_VERSION, JSON.stringify(state));
                 
                 // Show save status
                 const saveStatus = document.getElementById('saveStatus');
                 saveStatus.classList.add('show');
                 setTimeout(() => saveStatus.classList.remove('show'), 2000);
                 
-                console.log('State saved at:', new Date().toLocaleTimeString());
+                console.log(`State saved (v${APP_VERSION})`);
             } catch (error) {
                 console.error('Error saving state:', error);
             }
         }
         
-        // Load state from localStorage
+        // Load state from sessionStorage
         function loadState() {
             try {
-                const savedState = localStorage.getItem('bnbTradingState');
-                if (savedState) {
-                    const parsedState = JSON.parse(savedState);
-                    
-                    // Calculate time passed since last save
-                    const now = Date.now();
-                    const lastSaveTime = parsedState.lastSaveTime || now;
-                    const timePassed = now - lastSaveTime;
-                    
-                    // Calculate auto-increments since last save
-                    const incrementsPassed = Math.floor(timePassed / INCREMENT_INTERVAL);
-                    const balanceIncrease = incrementsPassed * INCREMENT_AMOUNT;
-                    
-                    // Update state with saved values
-                    state = {
-                        ...parsedState,
-                        totalBalance: parsedState.totalBalance + balanceIncrease,
-                        lastSaveTime: now
-                    };
-                    
-                    // If startTime doesn't exist or is in the future (invalid), create it
-                    if (!state.startTime || new Date(state.startTime) > new Date()) {
-                        state.startTime = new Date();
-                        console.log('Created new start time');
-                    }
-                    
-                    // Ensure we use 24 hours lock period
-                    state.lockPeriodHours = 24;
-                    
-                    console.log(`Loaded saved state. Added ${balanceIncrease} USDT.Z from ${incrementsPassed} increments during offline time.`);
-                    return true;
+                const savedState = sessionStorage.getItem('tradingState_v' + APP_VERSION);
+                
+                if (!savedState) {
+                    console.log('No saved state found');
+                    return false;
                 }
+                
+                const parsedState = JSON.parse(savedState);
+                
+                // التحقق من الإصدار
+                if (parsedState.appVersion !== APP_VERSION) {
+                    console.log('Version mismatch, using fresh state');
+                    return false;
+                }
+                
+                // Calculate time passed since last save
+                const now = Date.now();
+                const lastSaveTime = parsedState.lastSaveTime || now;
+                const timePassed = now - lastSaveTime;
+                
+                // Calculate auto-increments since last save
+                const incrementsPassed = Math.floor(timePassed / INCREMENT_INTERVAL);
+                const balanceIncrease = incrementsPassed * INCREMENT_AMOUNT;
+                
+                // Update state with saved values
+                state = {
+                    ...parsedState,
+                    totalBalance: parsedState.totalBalance + balanceIncrease,
+                    lastSaveTime: now
+                };
+                
+                // If startTime doesn't exist or is invalid, create it
+                if (!state.startTime || new Date(state.startTime) > new Date()) {
+                    state.startTime = new Date();
+                    state.lockEnded = false;
+                    console.log('Created new start time');
+                } else {
+                    // Check if lock period has ended
+                    const now = new Date();
+                    const startDate = new Date(state.startTime);
+                    const elapsedMs = now - startDate;
+                    state.lockEnded = elapsedMs >= LOCK_PERIOD_MS;
+                }
+                
+                console.log(`Loaded state v${APP_VERSION}. Added ${balanceIncrease} USDT.Z`);
+                return true;
             } catch (error) {
                 console.error('Error loading state:', error);
+                return false;
             }
-            return false;
         }
         
-        // Initialize default state if no saved state
+        // Initialize default state
         function initializeDefaultState() {
             state.startTime = new Date();
             state.lastSaveTime = Date.now();
             state.lastIncrementTime = Date.now();
             state.tradesHistory = [];
+            state.totalBalance = 7112175.00;
+            state.dailyTrades = 10569;
             state.lockPeriodHours = 24;
+            state.lockEnded = false;
+            state.appVersion = APP_VERSION;
             
-            console.log('Initialized default state with 7,112,175.00 balance');
+            console.log('Initialized fresh state v' + APP_VERSION);
         }
         
         // Update display
@@ -775,11 +869,12 @@
             
             const avgTradeSize = state.tradesHistory.length > 0 
                 ? (state.tradesHistory.reduce((sum, trade) => sum + trade.amount, 0) / state.tradesHistory.length).toFixed(3)
-                : "0.124";
+                : "0.238";
             document.getElementById('avgTradeSize').textContent = avgTradeSize;
             
-            const buyRatio = Math.round((state.buyCount/(state.buyCount + state.sellCount))*100) || 52;
-            const sellRatio = Math.round((state.sellCount/(state.buyCount + state.sellCount))*100) || 48;
+            const totalTrades = state.buyCount + state.sellCount;
+            const buyRatio = totalTrades > 0 ? Math.round((state.buyCount/totalTrades)*100) : 52;
+            const sellRatio = totalTrades > 0 ? Math.round((state.sellCount/totalTrades)*100) : 48;
             document.getElementById('buySellRatio').textContent = `${buyRatio}/${sellRatio}`;
             
             // Update time progress
@@ -800,46 +895,36 @@
             const totalLockMs = LOCK_PERIOD_MS;
             
             // Check if lock period has ended
-            const lockEnded = elapsedMs >= totalLockMs;
+            const lockEnded = state.lockEnded || elapsedMs >= totalLockMs;
             
-            // Calculate progress
-            const progressPercent = lockEnded ? 100 : Math.min((elapsedMs / totalLockMs) * 100, 100);
-            document.getElementById('timeProgress').style.width = progressPercent + '%';
-            
-            // Calculate elapsed and remaining time
-            const elapsedHours = Math.floor(elapsedMs / (1000 * 60 * 60));
-            const elapsedMinutes = Math.floor((elapsedMs % (1000 * 60 * 60)) / (1000 * 60));
-            
-            const remainingMs = Math.max(0, totalLockMs - elapsedMs);
-            const remainingHours = Math.floor(remainingMs / (1000 * 60 * 60));
-            const remainingMinutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
-            
-            // Update time displays
             if (lockEnded) {
+                state.lockEnded = true;
                 document.getElementById('elapsedTime').textContent = "24h 0m";
                 document.getElementById('remainingTime').textContent = "0h 0m";
                 document.getElementById('lockTimeDisplay').textContent = "Lock period ended";
+                document.getElementById('timeProgress').style.width = '100%';
             } else {
-                document.getElementById('elapsedTime').textContent = 
-                    `${elapsedHours}h ${elapsedMinutes}m`;
-                document.getElementById('remainingTime').textContent = 
-                    `${remainingHours}h ${remainingMinutes}m`;
+                const progressPercent = Math.min((elapsedMs / totalLockMs) * 100, 100);
+                document.getElementById('timeProgress').style.width = progressPercent + '%';
                 
-                // Update countdown timer
-                document.getElementById('lockTimeDisplay').textContent = 
-                    `${remainingHours}h ${remainingMinutes}m remaining`;
+                // Calculate elapsed and remaining time
+                const elapsedHours = Math.floor(elapsedMs / (1000 * 60 * 60));
+                const elapsedMinutes = Math.floor((elapsedMs % (1000 * 60 * 60)) / (1000 * 60));
+                
+                const remainingMs = totalLockMs - elapsedMs;
+                const remainingHours = Math.floor(remainingMs / (1000 * 60 * 60));
+                const remainingMinutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+                
+                document.getElementById('elapsedTime').textContent = `${elapsedHours}h ${elapsedMinutes}m`;
+                document.getElementById('remainingTime').textContent = `${remainingHours}h ${remainingMinutes}m`;
+                document.getElementById('lockTimeDisplay').textContent = `${remainingHours}h ${remainingMinutes}m remaining`;
             }
         }
         
-        // Auto-increment balance by 4 every 2 minutes - نفس الكود الأصلي
+        // Auto-increment balance by 4 every 2 minutes
         function startAutoIncrement() {
             setInterval(() => {
-                const now = new Date();
-                const startDate = new Date(state.startTime);
-                const elapsedMs = now - startDate;
-                
-                // Only increment if lock period hasn't ended
-                if (elapsedMs < LOCK_PERIOD_MS) {
+                if (!state.lockEnded) {
                     state.totalBalance += INCREMENT_AMOUNT;
                     state.lastIncrementTime = Date.now();
                     updateDisplay();
@@ -849,22 +934,18 @@
             }, INCREMENT_INTERVAL);
         }
         
-        // Generate a random trade (decimal amounts)
+        // Generate a random trade
         function generateRandomTrade() {
-            const now = new Date();
-            const startDate = new Date(state.startTime);
-            const elapsedMs = now - startDate;
-            
-            // Don't generate trades if lock period has ended
-            if (elapsedMs >= LOCK_PERIOD_MS) {
+            if (state.lockEnded) {
                 return;
             }
             
-            const isBuy = Math.random() > 0.48; // Slightly biased toward buying (52/48)
-            const amount = parseFloat((Math.random() * 0.49 + 0.01).toFixed(3)); // Random amount between 0.01 and 0.5
-            const price = 0.95 + (Math.random() * 0.1); // Random price between 0.95 and 1.05
+            const isBuy = Math.random() > 0.48;
+            const amount = parseFloat((Math.random() * 0.49 + 0.01).toFixed(3));
+            const price = 0.95 + (Math.random() * 0.1);
             const usdtValue = parseFloat((amount * price).toFixed(2));
             
+            const now = new Date();
             const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
             
             const trade = {
@@ -882,36 +963,29 @@
             state.totalTrades++;
             if (isBuy) {
                 state.buyCount++;
-                // Buying adds to balance
                 state.totalBalance += amount;
             } else {
                 state.sellCount++;
-                // Selling subtracts from balance
                 state.totalBalance -= amount;
             }
             
-            // Update daily trades count (random increment)
+            // Update daily trades count
             if (Math.random() > 0.7) {
                 state.dailyTrades += Math.floor(Math.random() * 3) + 1;
             }
             
-            // Keep only last 100 trades to prevent memory issues
+            // Keep only last 100 trades
             if (state.tradesHistory.length > 100) {
                 state.tradesHistory = state.tradesHistory.slice(0, 100);
             }
             
-            // Update the trades list
             updateTradesList();
-            
-            // Update the display (and auto-save)
             updateDisplay();
         }
         
         // Update trades list in UI
         function updateTradesList() {
             const tradesList = document.getElementById('tradesList');
-            
-            // Clear and update with latest trades (max 20)
             const displayTrades = state.tradesHistory.slice(0, 20);
             
             tradesList.innerHTML = '';
@@ -946,15 +1020,13 @@
         
         // Show withdrawal warning
         function showWithdrawWarning() {
-            const now = new Date();
-            const startDate = new Date(state.startTime);
-            const elapsedMs = now - startDate;
-            const totalLockMs = LOCK_PERIOD_MS;
-            
-            if (elapsedMs >= totalLockMs) {
+            if (state.lockEnded) {
                 alert('✅ LOCK PERIOD ENDED\n\nYou can now withdraw your funds.');
             } else {
-                const remainingMs = totalLockMs - elapsedMs;
+                const now = new Date();
+                const startDate = new Date(state.startTime);
+                const elapsedMs = now - startDate;
+                const remainingMs = LOCK_PERIOD_MS - elapsedMs;
                 const remainingHours = Math.floor(remainingMs / (1000 * 60 * 60));
                 const remainingMinutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
                 
@@ -965,10 +1037,8 @@
         
         // Initialize with some trades
         function initializeTrades() {
-            // Only add initial trades if we're starting fresh
             if (state.tradesHistory.length === 0) {
                 for (let i = 0; i < 15; i++) {
-                    // Generate trades with timestamps in the past
                     setTimeout(() => {
                         generateRandomTrade();
                     }, i * 100);
@@ -978,33 +1048,42 @@
         
         // Start live trading simulation
         function startLiveTrading() {
-            // Generate a trade every second
             setInterval(() => {
-                const now = new Date();
-                const startDate = new Date(state.startTime);
-                const elapsedMs = now - startDate;
-                
-                // Only generate trades if lock period hasn't ended
-                if (elapsedMs < LOCK_PERIOD_MS) {
+                if (!state.lockEnded) {
                     generateRandomTrade();
                 }
             }, 1000);
             
-            // Update stats randomly
             setInterval(() => {
-                // Update daily volume
-                const volume = (1.2 + Math.random() * 0.3).toFixed(2);
+                const volume = (1.31 + Math.random() * 0.3).toFixed(2);
                 document.getElementById('dailyVolume').textContent = `$${volume}M`;
                 
-                // Update liquidity
                 const liquidity = (8.3 + Math.random() * 0.3).toFixed(1);
                 document.getElementById('liquidity').textContent = `$${liquidity}M`;
             }, 5000);
         }
         
+        // Reset一切 to start fresh (for testing)
+        function resetEverything() {
+            if (confirm('Are you sure you want to reset everything? This will clear all data and start fresh.')) {
+                clearAllOldData();
+                location.reload();
+            }
+        }
+        
         // Initialize on page load
         window.onload = function() {
-            // Try to load saved state
+            // إضافة timestamp عشوائي لمنع الكاش
+            document.querySelectorAll('link[rel="stylesheet"]').forEach(link => {
+                if (link.href.includes('font-awesome')) {
+                    link.href = link.href.split('?')[0] + '?v=' + APP_VERSION + '&t=' + Date.now();
+                }
+            });
+            
+            // التحقق من الإصدار ومسح البيانات القديمة
+            checkAndClearOldData();
+            
+            // محاولة تحميل الحالة
             const stateLoaded = loadState();
             
             if (!stateLoaded) {
@@ -1014,11 +1093,10 @@
             // Initialize display
             updateDisplay();
             
-            // Initialize trades (if starting fresh)
+            // Initialize trades
             if (state.tradesHistory.length === 0) {
                 initializeTrades();
             } else {
-                // If we have saved trades, display them
                 updateTradesList();
             }
             
@@ -1035,16 +1113,14 @@
             // Save state before page unload
             window.addEventListener('beforeunload', saveState);
             
-            // Pre-fill contract address in the input field
+            // Pre-fill contract address
             document.getElementById('contractAddressInput').value = contractAddress;
             
-            // Show initial state info
-            console.log('Initial state loaded:', {
-                balance: state.totalBalance,
-                trades: state.tradesHistory.length,
-                startTime: new Date(state.startTime).toLocaleString(),
-                lastSave: state.lastSaveTime ? new Date(state.lastSaveTime).toLocaleTimeString() : 'Never'
-            });
+            // جعل دالة reset متاحة من console
+            window.resetApp = resetEverything;
+            
+            console.log('App loaded successfully v' + APP_VERSION);
+            console.log('To reset everything, run: resetApp()');
         };
     </script>
 </body>
