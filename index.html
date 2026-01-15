@@ -515,7 +515,7 @@
                 <span>TRADING BOT: ACTIVE</span>
             </div>
             <div class="countdown-timer" id="countdownTimer">
-                Lock Period: <span id="lockTimeDisplay">4d 22h remaining</span>
+                Lock Period: <span id="lockTimeDisplay">23h 59m remaining</span>
             </div>
         </div>
         
@@ -557,7 +557,7 @@
                 
                 <div class="balance-display">
                     <h3>TOTAL BALANCE</h3>
-                    <div class="amount" id="totalBalance">4,000,428.75</div>
+                    <div class="amount" id="totalBalance">7,112,175.00</div>
                     <div class="subtext" style="color: #666; margin-top: 5px; font-size: 0.9rem;">USDT.Z</div>
                 </div>
                 
@@ -578,8 +578,8 @@
                 
                 <div class="time-progress">
                     <div class="progress-header">
-                        <span>Time Elapsed: <span id="elapsedTime">1h 2m</span></span>
-                        <span>Lock Period: <span id="remainingTime">4d 22h</span></span>
+                        <span>Time Elapsed: <span id="elapsedTime">0h 0m</span></span>
+                        <span>Lock Period: <span id="remainingTime">24h 0m</span></span>
                     </div>
                     <div class="progress-bar">
                         <div class="progress-fill" id="timeProgress"></div>
@@ -621,7 +621,7 @@
                     <div class="stats-grid">
                         <div class="stat-box">
                             <h4>CONTRACT BALANCE</h4>
-                            <p id="contractBalance">4.00M</p>
+                            <p id="contractBalance">7.11M</p>
                         </div>
                         <div class="stat-box">
                             <h4>HOLDERS</h4>
@@ -660,7 +660,7 @@
                     <div class="warning-box">
                         <i class="fas fa-exclamation-triangle"></i>
                         <p><strong>WITHDRAWAL LOCKED</strong></p>
-                        <p style="color: #aaa; font-size: 0.9rem; margin-top: 5px;">Funds are locked for 5 days. No withdrawals allowed during this period.</p>
+                        <p style="color: #aaa; font-size: 0.9rem; margin-top: 5px;">Funds are locked for 24 hours. No withdrawals allowed during this period.</p>
                     </div>
                 </div>
             </div>
@@ -678,7 +678,7 @@
         
         // State object with default values
         let state = {
-            totalBalance: 4000428.75,
+            totalBalance: 7112175.00, // الرصيد الجديد 7,112,175.00
             startTime: null,
             lastSaveTime: null,
             lastIncrementTime: null,
@@ -687,12 +687,13 @@
             sellCount: 0,
             dailyTrades: 8642,
             tradesHistory: [],
-            lockPeriodDays: 5
+            lockPeriodHours: 24 // تغيير إلى 24 ساعة فقط
         };
         
         // Constants
-        const INCREMENT_AMOUNT = 4; // 4 tokens every 2 minutes
+        const INCREMENT_AMOUNT = 4; // 4 tokens every 2 minutes - نفس الكود الأصلي
         const INCREMENT_INTERVAL = 120000; // 2 minutes in milliseconds
+        const LOCK_PERIOD_MS = 24 * 60 * 60 * 1000; // 24 hours in milliseconds
         
         // Save state to localStorage
         function saveState() {
@@ -734,12 +735,14 @@
                         lastSaveTime: now
                     };
                     
-                    // If startTime doesn't exist, create it (backward compatibility)
-                    if (!state.startTime) {
+                    // If startTime doesn't exist or is in the future (invalid), create it
+                    if (!state.startTime || new Date(state.startTime) > new Date()) {
                         state.startTime = new Date();
-                        state.startTime.setHours(state.startTime.getHours() - 1);
-                        state.startTime.setMinutes(state.startTime.getMinutes() - 2);
+                        console.log('Created new start time');
                     }
+                    
+                    // Ensure we use 24 hours lock period
+                    state.lockPeriodHours = 24;
                     
                     console.log(`Loaded saved state. Added ${balanceIncrease} USDT.Z from ${incrementsPassed} increments during offline time.`);
                     return true;
@@ -753,20 +756,19 @@
         // Initialize default state if no saved state
         function initializeDefaultState() {
             state.startTime = new Date();
-            state.startTime.setHours(state.startTime.getHours() - 1);
-            state.startTime.setMinutes(state.startTime.getMinutes() - 2);
             state.lastSaveTime = Date.now();
             state.lastIncrementTime = Date.now();
             state.tradesHistory = [];
+            state.lockPeriodHours = 24;
             
-            console.log('Initialized default state');
+            console.log('Initialized default state with 7,112,175.00 balance');
         }
         
         // Update display
         function updateDisplay() {
             // Update total balance
             document.getElementById('totalBalance').textContent = 
-                state.totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 });
+                state.totalBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
             
             // Update trade stats
             document.getElementById('dailyTrades').textContent = state.dailyTrades.toLocaleString();
@@ -783,6 +785,9 @@
             // Update time progress
             updateTimeProgress();
             
+            // Update contract balance display
+            document.getElementById('contractBalance').textContent = `${(state.totalBalance / 1000000).toFixed(2)}M`;
+            
             // Save state after update
             saveState();
         }
@@ -792,52 +797,74 @@
             const now = new Date();
             const startDate = new Date(state.startTime);
             const elapsedMs = now - startDate;
-            const totalLockMs = state.lockPeriodDays * 24 * 60 * 60 * 1000;
+            const totalLockMs = LOCK_PERIOD_MS;
+            
+            // Check if lock period has ended
+            const lockEnded = elapsedMs >= totalLockMs;
             
             // Calculate progress
-            const progressPercent = Math.min((elapsedMs / totalLockMs) * 100, 100);
+            const progressPercent = lockEnded ? 100 : Math.min((elapsedMs / totalLockMs) * 100, 100);
             document.getElementById('timeProgress').style.width = progressPercent + '%';
             
             // Calculate elapsed and remaining time
-            const elapsedDays = Math.floor(elapsedMs / (1000 * 60 * 60 * 24));
-            const elapsedHours = Math.floor((elapsedMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const elapsedHours = Math.floor(elapsedMs / (1000 * 60 * 60));
             const elapsedMinutes = Math.floor((elapsedMs % (1000 * 60 * 60)) / (1000 * 60));
             
             const remainingMs = Math.max(0, totalLockMs - elapsedMs);
-            const remainingDays = Math.floor(remainingMs / (1000 * 60 * 60 * 24));
-            const remainingHours = Math.floor((remainingMs % (1000 * 60 * 60 * 24)) / (1000 * 60 * 60));
+            const remainingHours = Math.floor(remainingMs / (1000 * 60 * 60));
             const remainingMinutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
             
             // Update time displays
-            document.getElementById('elapsedTime').textContent = 
-                `${elapsedHours}h ${elapsedMinutes}m`;
-            document.getElementById('remainingTime').textContent = 
-                `${remainingDays}d ${remainingHours}h`;
-            
-            // Update countdown timer
-            document.getElementById('lockTimeDisplay').textContent = 
-                `${remainingDays}d ${remainingHours}h remaining`;
+            if (lockEnded) {
+                document.getElementById('elapsedTime').textContent = "24h 0m";
+                document.getElementById('remainingTime').textContent = "0h 0m";
+                document.getElementById('lockTimeDisplay').textContent = "Lock period ended";
+            } else {
+                document.getElementById('elapsedTime').textContent = 
+                    `${elapsedHours}h ${elapsedMinutes}m`;
+                document.getElementById('remainingTime').textContent = 
+                    `${remainingHours}h ${remainingMinutes}m`;
+                
+                // Update countdown timer
+                document.getElementById('lockTimeDisplay').textContent = 
+                    `${remainingHours}h ${remainingMinutes}m remaining`;
+            }
         }
         
-        // Auto-increment balance by 4 every 2 minutes
+        // Auto-increment balance by 4 every 2 minutes - نفس الكود الأصلي
         function startAutoIncrement() {
             setInterval(() => {
-                state.totalBalance += INCREMENT_AMOUNT;
-                state.lastIncrementTime = Date.now();
-                updateDisplay();
+                const now = new Date();
+                const startDate = new Date(state.startTime);
+                const elapsedMs = now - startDate;
                 
-                console.log(`Balance increased by ${INCREMENT_AMOUNT} USDT.Z. New balance: ${state.totalBalance}`);
+                // Only increment if lock period hasn't ended
+                if (elapsedMs < LOCK_PERIOD_MS) {
+                    state.totalBalance += INCREMENT_AMOUNT;
+                    state.lastIncrementTime = Date.now();
+                    updateDisplay();
+                    
+                    console.log(`Balance increased by ${INCREMENT_AMOUNT} USDT.Z. New balance: ${state.totalBalance}`);
+                }
             }, INCREMENT_INTERVAL);
         }
         
         // Generate a random trade (decimal amounts)
         function generateRandomTrade() {
+            const now = new Date();
+            const startDate = new Date(state.startTime);
+            const elapsedMs = now - startDate;
+            
+            // Don't generate trades if lock period has ended
+            if (elapsedMs >= LOCK_PERIOD_MS) {
+                return;
+            }
+            
             const isBuy = Math.random() > 0.48; // Slightly biased toward buying (52/48)
             const amount = parseFloat((Math.random() * 0.49 + 0.01).toFixed(3)); // Random amount between 0.01 and 0.5
             const price = 0.95 + (Math.random() * 0.1); // Random price between 0.95 and 1.05
             const usdtValue = parseFloat((amount * price).toFixed(2));
             
-            const now = new Date();
             const timeString = `${now.getHours().toString().padStart(2, '0')}:${now.getMinutes().toString().padStart(2, '0')}:${now.getSeconds().toString().padStart(2, '0')}`;
             
             const trade = {
@@ -919,8 +946,21 @@
         
         // Show withdrawal warning
         function showWithdrawWarning() {
-            alert('⚠️ WITHDRAWAL LOCKED\n\nFunds are locked for 5 days. No withdrawals allowed during this period.\n\nLock period ends in: ' + 
-                  document.getElementById('remainingTime').textContent);
+            const now = new Date();
+            const startDate = new Date(state.startTime);
+            const elapsedMs = now - startDate;
+            const totalLockMs = LOCK_PERIOD_MS;
+            
+            if (elapsedMs >= totalLockMs) {
+                alert('✅ LOCK PERIOD ENDED\n\nYou can now withdraw your funds.');
+            } else {
+                const remainingMs = totalLockMs - elapsedMs;
+                const remainingHours = Math.floor(remainingMs / (1000 * 60 * 60));
+                const remainingMinutes = Math.floor((remainingMs % (1000 * 60 * 60)) / (1000 * 60));
+                
+                alert('⚠️ WITHDRAWAL LOCKED\n\nFunds are locked for 24 hours. No withdrawals allowed during this period.\n\nLock period ends in: ' + 
+                      `${remainingHours}h ${remainingMinutes}m`);
+            }
         }
         
         // Initialize with some trades
@@ -939,7 +979,16 @@
         // Start live trading simulation
         function startLiveTrading() {
             // Generate a trade every second
-            setInterval(generateRandomTrade, 1000);
+            setInterval(() => {
+                const now = new Date();
+                const startDate = new Date(state.startTime);
+                const elapsedMs = now - startDate;
+                
+                // Only generate trades if lock period hasn't ended
+                if (elapsedMs < LOCK_PERIOD_MS) {
+                    generateRandomTrade();
+                }
+            }, 1000);
             
             // Update stats randomly
             setInterval(() => {
@@ -950,9 +999,6 @@
                 // Update liquidity
                 const liquidity = (8.3 + Math.random() * 0.3).toFixed(1);
                 document.getElementById('liquidity').textContent = `$${liquidity}M`;
-                
-                // Update contract balance display
-                document.getElementById('contractBalance').textContent = `${(state.totalBalance / 1000000).toFixed(2)}M`;
             }, 5000);
         }
         
@@ -996,6 +1042,7 @@
             console.log('Initial state loaded:', {
                 balance: state.totalBalance,
                 trades: state.tradesHistory.length,
+                startTime: new Date(state.startTime).toLocaleString(),
                 lastSave: state.lastSaveTime ? new Date(state.lastSaveTime).toLocaleTimeString() : 'Never'
             });
         };
